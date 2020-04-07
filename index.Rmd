@@ -1,0 +1,9 @@
+---
+title: "About Me"
+output: html_document
+---
+
+# Blake Freeman
+
+I currently live in Dallas Texas. 
+I work at Prologis as a financial analyst.

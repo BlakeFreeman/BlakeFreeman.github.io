@@ -1,0 +1,8 @@
+name: "Blake Freeman"
+navbar:
+  title: "My Website"
+  left:
+    - text: "About me"
+      href: index.html
+    - text: "Case Study 1"
+      href: CaseStudyR.html
