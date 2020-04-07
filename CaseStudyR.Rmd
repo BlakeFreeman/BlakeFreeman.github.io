@@ -1,0 +1,395 @@
+---
+title: "Case Study 1"
+author: "Blake Freeman & Neddy Nyatome"
+date: 'null'
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+Introduction:
+
+Today we will go over the results of the questions that you requested and addtional insights that I discovered during my exploration of this data. With that being said lets dive right in and go over the findings.  
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#dependencys 
+```{r}
+library(tidyverse)
+library(class)
+library(caret)
+library(e1071)
+library(ggplot2)
+```
+
+
+#Import the files
+```{r}
+beers_df = read.csv("C:/Users/blake/Desktop/MSDS/Case/Blake-Needy-Team-5/Data/Beers.csv",header = TRUE,stringsAsFactors=FALSE)
+
+breweries_df = read.csv("C:/Users/blake/Desktop/MSDS/Case/Blake-Needy-Team-5/Data/Breweries.csv",header = TRUE,stringsAsFactors=FALSE)
+
+```
+
+
+#Beer Data look.
+```{r}
+beers_df
+```
+
+This was an initail look at the beer data. The type of data shows Name of the beer, Beer ID, ABV,IBU Brewery ID Style and how many ounces each beer contains. 
+
+
+#Brewery data
+```{r}
+breweries_df
+```
+
+This was an initail look at the Brewery data. The type of data shows the Name of the brewery, City and State. When reviewing this Data I noticed there were duplicate values proceeded in the process of removing these data points from the Values. 
+
+#Checking to see if there is duplicated Values and removing them.
+```{r}
+#duplicated(breweries_df$Name)
+breweries_df <- breweries_df[!duplicated(breweries_df$Name), ]
+breweries_df
+```
+On futher exploration on the Brewery Data I checked to see if we had duplicated values in the Name category. I noticed that there were some values duplicated and removed these from the Brewery Data set. Based on my check there were a total of 7 Duplicated Values.
+
+
+
+```{r}
+#duplicated(beers_df$Name)
+beers_df <- beers_df[!duplicated(beers_df$Name), ] 
+beers_df
+```
+
+
+On futher exploration on the Beer Data I checked to see if we had duplicated values in the Name category. We noticed that there were some values duplicated and removed these from the Beer Data set. There was a total of 105 rows removed from the Beer Data set from the first pass 
+
+
+```{r}
+#find all the values that have () in them
+x = ")"
+beers <- beers_df %>%
+  filter(
+str_detect(beers_df$Name, fixed(x)))
+
+#List of all the beers I want to keep 
+Beers_to_keep <- beers %>% 
+  distinct(ABV, IBU, Style, Ounces, .keep_all = TRUE)
+
+
+#Turn the beers I want to keep into a List 
+list_beer <- as.list(Beers_to_keep$Name)
+
+#Filter out the beers and set a dataframe to drop
+beers_to_drop <- beers[ ! beers$Name %in% list_beer, ]
+#Create a list to drop from my main dataframe
+beers_to_drop_list<- as.list(beers_to_drop$Name)
+
+
+beers_df <-beers_df[ ! beers_df$Name %in% beers_to_drop_list, ]
+beers_df
+```
+
+On review there was another duplication that was discovered in the Data. We noticed that some beers are duplicated but have a slightly diffrent name with the year in () at the end of the beers name. Since those values were the same we decided to remove these since they are the same beer in all other aspects other than name and beer id. The code above is how we addressed that issue. 
+
+#Addressing the Null Values
+```{r}
+library(dplyr)
+
+beers_df[is.na(beers_df)] <- 0
+beers_df
+```
+
+I replaced all Null values with zero in the beer data. I did this since removing these values will skew the data. I felt it was approprate to still count the beers accordingly when displaying their values. 
+
+#Number of Breweries by State
+```{r}
+breweries_by_state <- breweries_df %>% group_by(State) %>% tally()
+breweries_by_state
+```
+
+Tally count of Breweries to create a data for a visualization to show the count of breweries per state. 
+
+#Number of Breweries by State Visulation
+```{r,fig.width=25,fig.height=10}
+g <- ggplot(breweries_by_state, aes(x = reorder(State,-n),y = n, fill =State)) + geom_bar(stat = "identity")+ geom_text(aes(label = n), vjust=-1) + labs(title =" Breweries by State", x = "State", y = "Number of Breweries")
+
+g
+```
+
+Colorado has the highest Breweries than any other state with 46 breweries in the State. This is displayed in the Graph above. 
+
+
+#Merged the Dataframe's
+```{r}
+beer_breweries_df <- merge(breweries_df,beers_df, by.x=c("Brew_ID"), by.y=c("Brewery_id"))
+beer_breweries_df
+```
+
+
+
+```{r}
+head(beer_breweries_df)
+tail(beer_breweries_df)
+
+```
+
+
+This was an initail look at the Brewery data. The type of data shows 
+
+#Median ABV and IBU
+```{r}
+library(plyr)
+ABV_Median<- ddply(beer_breweries_df,~State,summarise,Median_ABV = median(ABV))
+IBU_Median<- ddply(beer_breweries_df,~State,summarise,Median_IBU = median(IBU))
+ABV_Median
+IBU_Median
+```
+
+#Plotted ABV Median and IBU
+```{r,fig.width=30,fig.height=15}
+library(ggplot2)
+
+g <- ggplot(ABV_Median, aes(x = reorder(State,-Median_ABV),y = Median_ABV, fill =State)) + geom_bar(stat = "identity")+ geom_text(aes(label = Median_ABV), vjust=-1) + labs(title =" Median Alcohol by Volume by State", x = "State", y = "Median Alcohol by volume")
+g
+```
+
+
+DC has the highest median alcohol content per volume then any other state at .0625 (6.25%). This is displayed by the graph above.  
+
+
+
+#Plotted ABV Median and IBU
+```{r,fig.width=30,fig.height=15}
+g <- ggplot(IBU_Median, aes(x = reorder(State,-Median_IBU),y = Median_IBU, fill =State)) + geom_bar(stat = "identity")+ geom_text(aes(label = Median_IBU), vjust=-1) + labs(title =" Median IBU by State", x = "State", y = "Median IBU")
+g
+```
+WV has the highest Median IBU than any other state per the results above at 57.5. 
+
+
+```{r}
+Highest_AVB<- beer_breweries_df[which.max(beer_breweries_df$ABV),]
+Highest_IBU <- beer_breweries_df[which.max(beer_breweries_df$IBU),]
+
+Highest_AVB
+Highest_IBU
+```
+
+The highest Alcohol Content by Volume comes from CO with a ABV of .128 (12.8%). The beers name is Lee Hill Series Vol. 5 - Belgian Style Quadrupel Ale and is brewed by Upslope Brewing Company. 
+
+The highest IBU beer comes from OR with a IBU of 138. The beers name is Bitter Bitch Imperial IPA and is brewed by Asoria Brewing Company. 
+
+```{r}
+summary(beer_breweries_df)
+```
+
+
+```{r,fig.width=30,fig.height=15}
+
+ABV <- data.frame(beer_breweries_df$ABV)
+
+
+ggplot(data = ABV, aes(x = "", y = beer_breweries_df.ABV)) + 
+  geom_boxplot() + labs(title =" ABV", x = "", y = "ABV")
+
+ggplot(data = beer_breweries_df, aes(x = State, y = ABV)) + 
+  geom_boxplot() + labs(title =" ABV by State", x = "State", y = "ABV")
+
+
+
+```
+Summary statistics on ABV 
+
+Based on the data we expect to have most beers be produced between 5% to 6.7%, with the most occuring alcohol content occuring at 5.6% and a overall average of all beers at 5.82% 
+
+There are few expections on this of course, with the maximum alcohol content by volume being 12.8% and minimum being 0%. 
+Since this is what the Market is producing today, it can mean a number of things. This is what the market is currently looking for, the current standerdized process for brewing cause most beers to have this expected alcohol content, or there are untapped potentail markets where they are looking for beers with more alcohol content.
+
+#Dropped the zeros for the correlation 
+```{r}
+beer_df_ABV_IBU <- filter(beer_breweries_df, IBU != 0)
+```
+
+
+
+
+#Scatter Plot of ABV and IBU
+```{r}
+IBU_ABV <- ggplot(beer_df_ABV_IBU, aes(IBU, ABV, colour = State)) + 
+
+  geom_point() + 
+
+  theme(legend.position = "none") 
+
+IBU_ABV 
+```
+
+
+Based on the graph above. It is apprent there is a postive relationshipfor Alcohol Content and IBU. Now with that being said the large majoriity of this is cocentrated between just below 5% to 6% but there still shows a postive trend. 
+
+```{r}
+Ale <-  dplyr::filter(beer_breweries_df, grepl("Ale",Name.y
+))
+
+IPA <-  dplyr::filter(beer_breweries_df, grepl("IPA",Name.y
+))
+IPA$Type <- "IPA"
+Ale$Type <- "Ale"
+IPA
+Ale
+
+
+Ale_IPA <- rbind(Ale,IPA)
+Ale_IPA
+
+Ale_IPA_df <- select(Ale_IPA,ABV,IBU,Type)
+Ale_IPA_df
+```
+
+We filtered the data to be two Data sets one for Ale and One for IPA then added a new column to each called "Type" identifiying them as either IPA's or ALE's. From this point I appeneded the two dataframes together to make one useable set to test off of called ALE_IPA. 
+
+
+
+```{r}
+Ale_IPA_df %>% ggplot(aes(x = ABV, y = IBU , color = Type)) + geom_point()
+```
+
+```{r}
+#Use KNN to investigate the relationship between IPA and other Ales
+#Find ABV and IBU for both any beer with 'Ale' in its name other than IPA and India Pale Ales (IPA)
+
+set.seed(500)
+splitPerc = .70
+
+
+trainIndices = sample(1:dim(Ale_IPA_df)[1],round(splitPerc * dim(Ale_IPA_df)[1]))
+train = Ale_IPA_df[trainIndices,]
+test = Ale_IPA_df[-trainIndices,]
+
+
+classifications = knn(train[,c(1,2)],test[,c(1,2)],train$Type, prob = TRUE, k = 30)
+table(classifications,test$Type)
+confusionMatrix(table(classifications,test$Type))
+
+```
+The initial test to see the value and correlation using KNN
+```{r}
+set.seed(500)
+iterations = 100
+numks = 60
+splitPerc = .70
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+
+for(j in 1:iterations)
+{
+  trainIndices = sample(1:dim(Ale_IPA_df)[1],round(splitPerc * dim(Ale_IPA_df)[1]))
+  train = Ale_IPA_df[trainIndices,]
+  test = Ale_IPA_df[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(1,2)],test[,c(1,2)],train$Type, prob = TRUE, k = i)
+    table(classifications,test$Type)
+    CM = confusionMatrix(table(classifications,test$Type))
+    masterAcc[j,i] = CM$overall[1]
+  }
+  
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+which.max(MeanAcc)
+max(MeanAcc)
+
+
+```
+
+```{r}
+set.seed(500)
+splitPerc = .70
+
+
+trainIndices = sample(1:dim(Ale_IPA_df)[1],round(splitPerc * dim(Ale_IPA_df)[1]))
+train = Ale_IPA_df[trainIndices,]
+test = Ale_IPA_df[-trainIndices,]
+
+
+classifications = knn(train[,c(1,2)],test[,c(1,2)],train$Type, prob = TRUE, k = 29)
+table(classifications,test$Type)
+confusionMatrix(table(classifications,test$Type))
+```
+```{r}
+Relationship_with_state <- select(beer_breweries_df,State,ABV,IBU,Style,Ounces)
+Relationship_with_state$Style[Relationship_with_state$Style == ""] <- NA
+Relationship_with_state<- na.omit(Relationship_with_state)
+
+df2 <- transform(Relationship_with_state,StyleID=as.numeric(factor(Style)))
+df2
+```
+
+Turned the style into a factor and numeric so that I can try to see if there if there is anyway to predect what state the beer comes from based on ABV, IBU and Style of Beer. But to do so I had to create a column to create a unique identifier for each Style name so that it can be used to in KNN model. 
+
+```{r}
+set.seed(500)
+splitPerc = .70
+
+
+trainIndices = sample(1:dim(df2)[1],round(splitPerc * dim(df2)[1]))
+train = df2[trainIndices,]
+test = df2[-trainIndices,]
+
+
+classifications = knn(train[,c(2,6)],test[,c(2,6)],train$State, prob = TRUE, k = 30)
+
+
+u <- union(classifications,test$State)
+t <- table(factor(classifications, u), factor(test$State, u))
+confusionMatrix(t)
+
+```
+
+```{r}
+
+set.seed(500)
+iterations = 100
+numks = 60
+splitPerc = .70
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+
+for(j in 1:iterations)
+{
+  trainIndices = sample(1:dim(df2)[1],round(splitPerc * dim(df2)[1]))
+  train = df2[trainIndices,]
+  test = df2[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(2,3,5,6)],test[,c(2,3,5,6)],train$State, prob = TRUE, k = i)
+    u <- union(classifications,test$State)
+    t <- table(factor(classifications, u), factor(test$State, u))
+    CM = confusionMatrix(t)
+    masterAcc[j,i] = CM$overall[1]
+  }
+  
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+which.max(MeanAcc)
+max(MeanAcc)
+
+```
+
+Based on this, it shows that State has no bearing on the ABV, IBU, Ounces and Style of beer. This means that you can use this infomration to move/open more sites to be  more closely tied to your customer bases. 
+
+
+
